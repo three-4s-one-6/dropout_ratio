@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* OpenLayers CSS */
+@import 'ol/ol.css';
+
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 5px;
+  background: #ffffff00;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #6b7280;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4b5563;
+}
+
+/* Base styles */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#__next {
+  height: 100%;
+}
+
+/* Map container styles */
+.ol-viewport {
+  border-radius: 0;
+}
+
+.ol-control {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.ol-control:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Custom map controls */
+.map-control-button {
+  @apply bg-white hover:bg-gray-50 border border-gray-200 rounded shadow-sm p-2 transition-colors duration-200;
+}
+
+/* Dashboard animations */
+.dashboard-slide-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.dashboard-slide-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
+}
+
+.dashboard-slide-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.dashboard-slide-exit-active {
+  transform: translateX(-100%);
+  opacity: 0;
+  transition: transform 300ms ease-in-out, opacity 300ms ease-in-out;
+}
