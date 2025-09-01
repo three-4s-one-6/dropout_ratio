@@ -3,10 +3,18 @@
 import { useState } from 'react';
 import { ChevronDownIcon, AdjustmentsHorizontalIcon } from '@heroicons/react/24/outline';
 import { useFilter } from '@/providers/FilterProvider';
-import { VISUALIZABLE_FIELDS, VisualizableField } from '@/types/migrationData';
+import { VISUALIZABLE_FIELDS, AMBATTUR_VILLAGE_FIELDS, VisualizableField } from '@/types/migrationData';
 import { DISTRICT_MAPPING } from '@/utils/dataPaths';
 
-export default function MapFilterMenu() {
+interface MapFilterMenuProps {
+  showAmbatturSchools?: boolean;
+  onToggleAmbatturSchools?: (show: boolean) => void;
+}
+
+export default function MapFilterMenu({ 
+  showAmbatturSchools = false, 
+  onToggleAmbatturSchools 
+}: MapFilterMenuProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const {
     filter,
@@ -49,7 +57,6 @@ export default function MapFilterMenu() {
           className="flex items-center justify-between w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors duration-200"
         >
           <div className="flex items-center space-x-2">
-            <AdjustmentsHorizontalIcon className="h-5 w-5 text-gray-600" />
             <div>
               <div className="text-sm font-medium text-gray-900">
                 {VISUALIZABLE_FIELDS[filter.selectedField]}
@@ -59,11 +66,7 @@ export default function MapFilterMenu() {
               </div>
             </div>
           </div>
-          <ChevronDownIcon 
-            className={`h-4 w-4 text-gray-600 transition-transform duration-200 ${
-              isExpanded ? 'rotate-180' : ''
-            }`} 
-          />
+          
         </button>
 
         {/* Expanded Menu */}
@@ -98,26 +101,69 @@ export default function MapFilterMenu() {
               </nav>
             </div>
 
-            {/* Field Selection */}
+            {/* Field Selection based on view type */}
             <div className="px-4 py-3 max-h-60 overflow-y-auto">
-              <div className="space-y-1">
-                {Object.entries(VISUALIZABLE_FIELDS).map(([key, label]) => (
-                  <button
-                    key={key}
-                    onClick={() => handleFieldChange(key as VisualizableField)}
-                    className={`w-full text-left px-2 py-1.5 text-sm rounded hover:bg-gray-100 transition-colors duration-150 ${
-                      filter.selectedField === key 
-                        ? 'bg-blue-50 text-blue-700 font-medium' 
-                        : 'text-gray-700'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
+              {filter.viewType === 'village' && filter.selectedTaluk === 'Ambattur' ? (
+                <div className="space-y-3">
+                  {/* Schools Layer Toggle for Ambattur */}
+                  <div>
+                    <label className="flex items-center text-sm">
+                      <input
+                        type="checkbox"
+                        checked={showAmbatturSchools}
+                        onChange={(e) => onToggleAmbatturSchools?.(e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mr-2"
+                      />
+                      <span className="text-gray-700 font-medium">
+                        Show Schools Layer
+                      </span>
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Display Ambattur schools on the map
+                    </p>
+                  </div>
+                  
+                  {/* Ambattur Village Fields */}
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-900 mb-2">Village Data Fields</h4>
+                    <div className="space-y-1">
+                      {Object.entries(AMBATTUR_VILLAGE_FIELDS).map(([key, label]) => (
+                        <button
+                          key={key}
+                          onClick={() => handleFieldChange(key as any)}
+                          className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 transition-colors duration-150 ${
+                            filter.selectedField === key 
+                              ? 'bg-blue-50 text-blue-700 font-medium' 
+                              : 'text-gray-700'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {Object.entries(VISUALIZABLE_FIELDS).map(([key, label]) => (
+                    <button
+                      key={key}
+                      onClick={() => handleFieldChange(key as VisualizableField)}
+                      className={`w-full text-left px-2 py-1.5 text-xs rounded hover:bg-gray-100 transition-colors duration-150 ${
+                        filter.selectedField === key 
+                          ? 'bg-blue-50 text-blue-700 font-medium' 
+                          : 'text-gray-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Weighted Calculation Option */}
+            {/*
             <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
               <label className="flex items-center text-sm">
                 <input
@@ -134,6 +180,7 @@ export default function MapFilterMenu() {
                 Divides total students by unique schools
               </p>
             </div>
+            */}
           </div>
         )}
       </div>

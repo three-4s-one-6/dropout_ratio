@@ -464,6 +464,142 @@ export const StyleFactory = {
     },
 
     migration: {
+        // Helper function to classify school by student count
+        getSchoolClassification: (totalStudents: number) => {
+            if (totalStudents <= 100) return 'low';
+            if (totalStudents <= 500) return 'medium';
+            return 'high';
+        },
+        
+        // Helper function to get school color based on classification
+        getSchoolColor: (classification: string) => {
+            switch (classification) {
+                case 'low': return '#facc15'; // yellow-400
+                case 'medium': return '#fb923c'; // orange-400
+                case 'high': return '#22c55e'; // green-500
+                default: return '#9ca3af'; // gray-400
+            }
+        },
+        
+        schoolStyle: (feature: any) => {
+            const props = feature.getProperties();
+            // Use mock data if total_students is null/undefined
+            const totalStudents = props.total_students || Math.floor(Math.random() * 800) + 50; // Mock data: 50-850 students
+            const classification = StyleFactory.migration.getSchoolClassification(totalStudents);
+            const color = StyleFactory.migration.getSchoolColor(classification);
+            
+            return new Style({
+                image: new Circle({
+                    radius: classification === 'high' ? 8 : classification === 'medium' ? 6 : 4,
+                    fill: new Fill({
+                        color: color,
+                    }),
+                    stroke: new Stroke({
+                        color: '#ffffff',
+                        width: 2,
+                    }),
+                }),
+            });
+        },
+        
+        schoolHoverStyle: (feature: any) => {
+            const props = feature.getProperties();
+            // Use mock data if total_students is null/undefined
+            const totalStudents = props.total_students || Math.floor(Math.random() * 800) + 50; // Mock data: 50-850 students
+            const classification = StyleFactory.migration.getSchoolClassification(totalStudents);
+            const color = StyleFactory.migration.getSchoolColor(classification);
+            
+            return new Style({
+                image: new Circle({
+                    radius: classification === 'high' ? 12 : classification === 'medium' ? 10 : 8,
+                    fill: new Fill({
+                        color: color,
+                    }),
+                    stroke: new Stroke({
+                        color: '#000000',
+                        width: 3,
+                    }),
+                }),
+                text: new Text({
+                    text: props.name || props.school_name || 'School',
+                    font: 'bold 11px Arial',
+                    fill: new Fill({
+                        color: '#000000',
+                    }),
+                    stroke: new Stroke({
+                        color: '#ffffff',
+                        width: 3,
+                    }),
+                    textAlign: 'center',
+                    textBaseline: 'middle',
+                    offsetY: -25,
+                    overflow: true,
+                }),
+            });
+        },
+        
+        villageStyle: (feature: any, classification: any, selectedField: string, useWeightedCalculation: boolean) => {
+            const props = feature.getProperties();
+            let value: number;
+            
+            if (useWeightedCalculation && selectedField === 'student_school_ratio') {
+                const numerator = props['total_students'];
+                const denominator = props['unique_schools'];
+                if (typeof numerator === 'number' && typeof denominator === 'number' && 
+                    numerator != null && denominator != null && 
+                    denominator !== 0 && !isNaN(numerator) && !isNaN(denominator)) {
+                    value = numerator / denominator;
+                } else {
+                    value = 0;
+                }
+            } else {
+                value = props[selectedField];
+            }
+            
+            // Get color from classification
+            let fillColor = '#ffffff'; // Default white
+            if (classification && typeof value === 'number' && !isNaN(value) && isFinite(value)) {
+                const { breaks, colors } = classification;
+                
+                if (value <= breaks[0]) {
+                    fillColor = colors[0];
+                } else if (value >= breaks[breaks.length - 1]) {
+                    fillColor = colors[colors.length - 1];
+                } else {
+                    for (let i = 0; i < breaks.length - 1; i++) {
+                        if (value >= breaks[i] && value < breaks[i + 1]) {
+                            fillColor = colors[i];
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            return new Style({
+                fill: new Fill({
+                    color: fillColor + 'B3', // Add hex alpha for 70% opacity
+                }),
+                stroke: new Stroke({
+                    color: '#000000',
+                    width: 2,
+                }),
+                text: new Text({
+                    text: props.vill_name || props.village_name || props.name || '',
+                    font: 'bold 10px Arial',
+                    fill: new Fill({
+                        color: '#000000',
+                    }),
+                    stroke: new Stroke({
+                        color: '#ffffff',
+                        width: 3,
+                    }),
+                    textAlign: 'center',
+                    textBaseline: 'middle',
+                    overflow: true,
+                }),
+            });
+        },
+
         districtStyle: (feature: any, classification: any, selectedField: string, useWeightedCalculation: boolean) => {
             debugger
             const props = feature.getProperties();

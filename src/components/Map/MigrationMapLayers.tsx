@@ -29,13 +29,15 @@ import { useState } from 'react';
 const DISTRICT_LAYER_ID = 'migration-districts';
 const TALUK_LAYER_ID = 'migration-taluks';
 const SCHOOL_LAYER_ID = 'migration-schools';
+const VILLAGE_LAYER_ID = 'migration-villages';
 
 interface MigrationMapLayersProps {
-  onFeatureClick?: (feature: any, layerType: 'district' | 'taluk' | 'school') => void;
-  onFeatureDoubleClick?: (feature: any, layerType: 'district' | 'taluk' | 'school') => void;
+  onFeatureClick?: (feature: any, layerType: 'district' | 'taluk' | 'school' | 'village') => void;
+  onFeatureDoubleClick?: (feature: any, layerType: 'district' | 'taluk' | 'school' | 'village') => void;
+  showAmbatturSchools?: boolean;
 }
 
-export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClick }: MigrationMapLayersProps) {
+export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClick, showAmbatturSchools = false }: MigrationMapLayersProps) {
   const { map, isMapReady } = useMigrationMap();
   const { 
     addLayer, 
@@ -50,16 +52,22 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
   const { 
     districtData,
     talukData,
-    schoolData,
+    villageData,
+    ambatturSchoolsData,
     loadTalukData,
-    clearTalukData 
+    loadVillageData,
+    loadAmbatturSchools,
+    clearTalukData,
+    clearVillageData,
+    clearAmbatturSchools 
   } = useMigrationData();
   
   const { 
     filter,
     colorClassification,
     setColorClassification,
-    navigateToTalukView 
+    navigateToTalukView,
+    navigateToAmbatturVillageView 
   } = useFilter();
 
   // Create styled layer for district data
@@ -190,15 +198,130 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
       // Add double click handler for village view (Ambattur only)
       if (onFeatureDoubleClick) {
         features.set('doubleClickHandler', (feature: any) => {
-          console.log('Taluk double clicked:', feature.getProperties());
+          const props = feature.getProperties();
+          console.log('Taluk double clicked:', props);
           onFeatureDoubleClick(feature, 'taluk');
-          // Village view will be implemented later if needed
+          
+          // Navigate to village view if this is Ambattur taluk
+          if (props.taluk_name === 'Ambattur' || props.talukname === 'Ambattur') {
+            console.log('Navigating to Ambattur village view');
+            navigateToAmbatturVillageView();
+            loadVillageData();
+          }
         });
       }
     }
 
     return { layer: features, styleFunction };
-  }, [talukData, filter, isMapReady, setColorClassification, onFeatureClick, onFeatureDoubleClick]);
+  }, [talukData, filter, isMapReady, setColorClassification, onFeatureClick, onFeatureDoubleClick, navigateToAmbatturVillageView, loadVillageData]);
+
+  // Create styled layer for Ambattur schools data
+  const createAmbatturSchoolsLayer = useCallback((showLayer: boolean) => {
+    console.log('createAmbatturSchoolsLayer called:', { 
+      hasAmbatturSchoolsData: !!ambatturSchoolsData, 
+      isMapReady, 
+      showLayer,
+      viewType: filter.viewType
+    });
+    
+    if (!ambatturSchoolsData || !isMapReady || !showLayer || filter.viewType !== 'village') return null;
+
+    const features = LayersFactory.createLayerByGeoJSONObject({
+      geoJSONObj: ambatturSchoolsData,
+      id: SCHOOL_LAYER_ID,
+      name: 'Ambattur Schools'
+    });
+
+    // Create style function using StyleFactory (simple point style for schools)
+    const styleFunction = (feature: any) => {
+      return StyleFactory.migration.schoolStyle(feature);
+    };
+
+    if (features instanceof VectorLayer) {
+      // Add single click handler for showing details
+      if (onFeatureClick) {
+        features.set('singleClickHandler', (feature: any) => {
+          console.log('Ambattur school single clicked:', feature.getProperties());
+          onFeatureClick(feature, 'school');
+        });
+      }
+      
+      // Set layerType for easy identification
+      features.set('layerType', 'school');
+      
+      // Add hover style
+      features.setStyle((feature: any, resolution: number) => {
+        if (feature.get('isHovered')) {
+          return StyleFactory.migration.schoolHoverStyle(feature);
+        }
+        return styleFunction(feature);
+      });
+    }
+
+    return { layer: features, styleFunction };
+  }, [ambatturSchoolsData, isMapReady, filter.viewType, onFeatureClick]);
+
+  // Create styled layer for village data (Ambattur)
+  const createVillageLayer = useCallback(() => {
+    console.log('createVillageLayer called:', { 
+      hasVillageData: !!villageData, 
+      isMapReady, 
+      viewType: filter.viewType 
+    });
+    
+    if (!villageData || !isMapReady || filter.viewType !== 'village') return null;
+
+    const features = LayersFactory.createLayerByGeoJSONObject({
+      geoJSONObj: villageData,
+      id: VILLAGE_LAYER_ID,
+      name: 'Ambattur Villages'
+    });
+
+    // Extract values for classification (similar to taluk data)
+    const values = villageData.features.map((feature: any) => {
+      const props = feature.properties;
+      
+      if (filter.useWeightedCalculation && filter.selectedField === 'student_school_ratio') {
+        return calculateWeightedField(props, 'total_students', 'unique_schools') || 0;
+      }
+      
+      const value = props[filter.selectedField];
+      return typeof value === 'number' ? value : 0;
+    });
+
+    // Create color classification
+    const classification = createEqualIntervalClassification(
+      values,
+      filter.selectedField as string
+    );
+    console.log('Village Classification:', classification, 'Values:', values.slice(0, 5));
+    setColorClassification(classification);
+
+    // Create style function using StyleFactory
+    const styleFunction = (feature: any) => {
+      return StyleFactory.migration.villageStyle(
+        feature, 
+        classification, 
+        filter.selectedField, 
+        filter.useWeightedCalculation
+      );
+    };
+
+    if (features instanceof VectorLayer) {
+      // Add single click handler for showing details
+      if (onFeatureClick) {
+        features.set('singleClickHandler', (feature: any) => {
+          console.log('Village single clicked:', feature.getProperties());
+          onFeatureClick(feature, 'village');
+        });
+      }
+      
+      // Set layerType for easy identification
+      features.set('layerType', 'village');
+    }
+
+    return { layer: features, styleFunction };
+  }, [villageData, filter, isMapReady, setColorClassification, onFeatureClick]);
 
   // Load and display district layer
   useEffect(() => {
@@ -261,6 +384,58 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
     };
   }, [isMapReady, map, filter.viewType, filter.selectedField, filter.useWeightedCalculation, createTalukLayer, addLayer, removeLayer, zoomToLayer, talukData]);
 
+  // Load and display village layer (for Ambattur)
+  useEffect(() => {
+    console.log('Village layer useEffect triggered:', { 
+      isMapReady, 
+      hasMap: !!map, 
+      viewType: filter.viewType, 
+      hasVillageData: !!villageData,
+      selectedTaluk: filter.selectedTaluk
+    });
+    
+    if (!isMapReady || !map || filter.viewType !== 'village' || filter.selectedTaluk !== 'Ambattur') return;
+
+    // Load village data if not loaded
+    if (!villageData) {
+      loadVillageData();
+      return;
+    }
+
+    const result = createVillageLayer();
+    console.log('Village layer created:', result);
+    
+    if (result) {
+      addLayer(result.layer, result.styleFunction);
+      if (previousMode !== 'village') {
+        zoomToLayer(result.layer);
+        setPreviousMode('village');
+      }
+      // Hide other layers
+      removeLayer(DISTRICT_LAYER_ID);
+      removeLayer(TALUK_LAYER_ID);
+      
+      // Handle Ambattur schools layer if enabled
+      if (showAmbatturSchools) {
+        if (!ambatturSchoolsData) {
+          loadAmbatturSchools();
+        } else {
+          const schoolResult = createAmbatturSchoolsLayer(true);
+          if (schoolResult) {
+            addLayer(schoolResult.layer, schoolResult.styleFunction);
+          }
+        }
+      } else {
+        // Remove schools layer if disabled
+        removeLayer(SCHOOL_LAYER_ID);
+      }
+    }
+
+    return () => {
+      // Cleanup is handled by the addLayer function
+    };
+  }, [isMapReady, map, filter.viewType, filter.selectedTaluk, filter.selectedDistrict, villageData, ambatturSchoolsData, showAmbatturSchools, loadVillageData, loadAmbatturSchools, createVillageLayer, createAmbatturSchoolsLayer, addLayer, removeLayer, zoomToLayer]);
+
   // Monitor view type changes
   useEffect(() => {
     console.log('View type changed to:', filter.viewType);
@@ -273,6 +448,22 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
       removeLayer(TALUK_LAYER_ID);
     }
   }, [filter.viewType, clearTalukData, removeLayer]);
+  
+  // Clear Ambattur schools data when switching away from village view
+  useEffect(() => {
+    if (filter.viewType !== 'village') {
+      clearAmbatturSchools();
+      removeLayer(SCHOOL_LAYER_ID);
+    }
+  }, [filter.viewType, clearAmbatturSchools, removeLayer]);
+  
+  // Clear village data when switching away from village view
+  useEffect(() => {
+    if (filter.viewType !== 'village') {
+      clearVillageData();
+      removeLayer(VILLAGE_LAYER_ID);
+    }
+  }, [filter.viewType, clearVillageData, removeLayer]);
 
   return null; // This component doesn't render anything directly
 }

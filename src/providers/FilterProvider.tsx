@@ -22,6 +22,7 @@ interface FilterContextValue {
   resetToDistrictView: () => void;
   navigateToTalukView: (districtCode: number) => void;
   navigateToVillageView: (districtCode: number, talukName: string) => void;
+  navigateToAmbatturVillageView: () => void;
 }
 
 const FilterContext = createContext<FilterContextValue | undefined>(undefined);
@@ -115,6 +116,16 @@ export function FilterProvider({ children }: FilterProviderProps) {
     setColorClassification(null);
   }, []);
   
+  const navigateToAmbatturVillageView = useCallback(() => {
+    setFilter(prev => ({
+      ...prev,
+      viewType: 'village' as MapViewType,
+      selectedDistrict: 2, // Chennai district
+      selectedTaluk: 'Ambattur',
+    }));
+    setColorClassification(null);
+  }, []);
+  
   const value: FilterContextValue = {
     filter,
     colorClassification,
@@ -127,6 +138,7 @@ export function FilterProvider({ children }: FilterProviderProps) {
     resetToDistrictView,
     navigateToTalukView,
     navigateToVillageView,
+    navigateToAmbatturVillageView,
   };
   
   return (

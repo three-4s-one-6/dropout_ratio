@@ -252,7 +252,7 @@ export interface SchoolFeatureCollection {
 /**
  * Map view types
  */
-export type MapViewType = 'district' | 'taluk' | 'village';
+export type MapViewType = 'district' | 'taluk' | 'village' | 'school';
 
 /**
  * Filter configuration for map visualization
@@ -298,3 +298,19 @@ export const VISUALIZABLE_FIELDS = {
 } as const;
 
 export type VisualizableField = keyof typeof VISUALIZABLE_FIELDS | 'student_school_ratio';
+
+/**
+ * Fields available for Ambattur village visualization
+ */
+export const AMBATTUR_VILLAGE_FIELDS = {
+  total_students: 'Total Students',
+  male_students: 'Male Students', 
+  female_students: 'Female Students',
+  gender_ratio: 'Gender Ratio',
+  min_class: 'Minimum Class',
+  max_class: 'Maximum Class',
+  avg_class: 'Average Class',
+  class_range: 'Class Range',
+  unique_schools: 'Number of Schools',
+  students_per_school: 'Students per School'
+} as const;

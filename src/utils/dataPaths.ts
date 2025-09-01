@@ -13,8 +13,11 @@ export const DATA_PATHS = {
   // Schools by district (01_schools.geojson through 38_schools.geojson) 
   SCHOOLS_BASE: '/data/students_data/schools_by_district',
   
-  // Village data for Ambattur (placeholder - needs to be created)
-  AMBATTUR_VILLAGES: '/data/students_data/villages/ambattur_villages.geojson',
+  // Village data for Ambattur
+  AMBATTUR_VILLAGES: '/data/students_data/ambattur_village_migration_map.geojson',
+  
+  // Ambattur schools data
+  AMBATTUR_SCHOOLS: '/data/students_data/ambattur_schools.geojson',
 } as const;
 
 /**
