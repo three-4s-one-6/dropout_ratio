@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import MapContainer from '../Map/MapContainer';
 import Dashboard from '../Dashboard/Dashboard';
 
@@ -9,14 +9,20 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const handleFeatureClick = (feature: any, layerType: 'district' | 'taluk' | 'school') => {
+  const [isDashboardMinimized, setIsDashboardMinimized] = useState(false);
+
+  const handleFeatureClick = (feature: any, layerType: 'district' | 'taluk' | 'school' | 'village') => {
     // Log feature click for debugging
     console.log(`Single clicked ${layerType}:`, feature.getProperties());
   };
 
-  const handleFeatureDoubleClick = (feature: any, layerType: 'district' | 'taluk' | 'school') => {
+  const handleFeatureDoubleClick = (feature: any, layerType: 'district' | 'taluk' | 'school' | 'village') => {
     // Log feature double click for debugging
     console.log(`Double clicked ${layerType} - navigating:`, feature.getProperties());
+  };
+
+  const toggleDashboard = () => {
+    setIsDashboardMinimized(!isDashboardMinimized);
   };
 
   return (
@@ -38,10 +44,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </div>
       </header>
 
-      {/* Main content area */}
-      <div className="flex-1 flex overflow-hidden">        
-        {/* Full-screen Map container */}
-        <div className="flex-1 relative">
+      {/* Main content area - split layout */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Dashboard on the left */}
+        <Dashboard 
+          isMinimized={isDashboardMinimized}
+          onToggleMinimize={toggleDashboard}
+        />
+        
+        {/* Map container on the right */}
+        <div className={`flex-1 relative transition-all duration-300 ease-in-out ${
+          isDashboardMinimized ? 'ml-0' : 'ml-0'
+        }`}>
           <MapContainer 
             onFeatureClick={handleFeatureClick}
             onFeatureDoubleClick={handleFeatureDoubleClick}
