@@ -62,6 +62,14 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
     clearAmbatturSchools 
   } = useMigrationData();
   
+  // Log context usage for debugging
+  console.log('🗺️ [MigrationMapLayers] Using shared MigrationDataProvider context:', {
+    contextInstance: 'SHARED',
+    hasDistrictData: !!districtData,
+    hasTalukData: !!talukData,
+    hasVillageData: !!villageData
+  });
+  
   const { 
     filter,
     colorClassification,
@@ -107,7 +115,6 @@ export default function MigrationMapLayers({ onFeatureClick, onFeatureDoubleClic
 
     // Create style function using StyleFactory
     const styleFunction = (feature: any) => {
-      debugger
       return StyleFactory.migration.districtStyle(
         feature, 
         classification, 

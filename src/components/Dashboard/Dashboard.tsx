@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { 
   BarChart, 
   Bar, 
@@ -35,6 +35,36 @@ const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'
 export default function Dashboard({ isMinimized, onToggleMinimize }: DashboardProps) {
   const { filter } = useFilter();
   const { districtData, talukData, villageData } = useMigrationData();
+  
+  // Force re-render trigger for debugging
+  const [debugRender, setDebugRender] = useState(0);
+  
+  // Log context usage for debugging
+  console.log('🎯 [Dashboard] Using shared MigrationDataProvider context:', {
+    contextInstance: 'SHARED',
+    hasDistrictData: !!districtData,
+    hasTalukData: !!talukData,
+    hasVillageData: !!villageData
+  });
+  
+  // Map district field names to taluk field names (defined outside useMemo to avoid hoisting issues)
+  const mapDistrictFieldToTalukField = useCallback((fieldName: string): string => {
+    const fieldMapping: Record<string, string> = {
+      'government_schools': 'government_students',
+      'private_schools': 'private_students', 
+      'fully_aided_schools': 'aided_students',
+      'partially_aided_schools': 'aided_students' // Map to aided_students as fallback
+    };
+    
+    const mappedField = fieldMapping[fieldName] || fieldName;
+    console.log('📋 [Dashboard] Field mapping:', {
+      original: fieldName,
+      mapped: mappedField,
+      isDirectMapping: fieldName === mappedField
+    });
+    
+    return mappedField;
+  }, []);
 
   // Process state-level data for district view
   const stateData = useMemo(() => {
@@ -61,32 +91,124 @@ export default function Dashboard({ isMinimized, onToggleMinimize }: DashboardPr
     }).sort((a, b) => b.value - a.value);
   }, [districtData, filter.selectedField, filter.useWeightedCalculation]);
 
+
+  useEffect(() => {
+    console.log('📊 [Dashboard] District data received:', {
+      hasData: !!districtData,
+      featuresCount: districtData?.features?.length || 0,
+      viewType: filter.viewType,
+      timestamp: new Date().toISOString()
+    });
+  }, [districtData, filter.viewType]);
+  
+  useEffect(() => {
+    console.log('📊 [Dashboard] Taluk data received:', {
+      hasData: !!talukData,
+      featuresCount: talukData?.features?.length || 0,
+      viewType: filter.viewType,
+      selectedDistrict: filter.selectedDistrict,
+      dataReference: talukData,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Force component re-render to ensure useMemo recalculates
+    if (talukData) {
+      setDebugRender(prev => prev + 1);
+      console.log('🔄 [Dashboard] Forced re-render due to taluk data update');
+    }
+  }, [talukData, filter.viewType, filter.selectedDistrict]);
+
+  useEffect(() => {
+    console.log('📊 [Dashboard] Village data received:', {
+      hasData: !!villageData,
+      featuresCount: villageData?.features?.length || 0,
+      viewType: filter.viewType,
+      selectedTaluk: filter.selectedTaluk,
+      timestamp: new Date().toISOString()
+    });
+  }, [villageData, filter.viewType, filter.selectedTaluk]);
+
+
+  // Log villageData for debugging
   // Process district-level data for taluk view
   const districtTalukData = useMemo(() => {
-    if (!talukData) return [];
+    console.log('📝 [Dashboard] Processing taluk data for dashboard:', {
+      hasTalukData: !!talukData,
+      talukFeatures: talukData?.features?.length || 0,
+      selectedField: filter.selectedField,
+      useWeighted: filter.useWeightedCalculation,
+      viewType: filter.viewType,
+      selectedDistrict: filter.selectedDistrict,
+      debugRender,
+      firstFeatureProps: talukData?.features?.[0]?.properties ? Object.keys(talukData.features[0].properties) : []
+    });
     
-    // Map district field names to taluk field names
-    const mapDistrictFieldToTalukField = (fieldName: string): string => {
-      const fieldMapping: Record<string, string> = {
-        'government_schools': 'government_students',
-        'private_schools': 'private_students', 
-        'fully_aided_schools': 'aided_students'
-      };
-      return fieldMapping[fieldName] || fieldName;
-    };
+    if (!talukData || !talukData.features || talukData.features.length === 0) {
+      console.log('⚠️  [Dashboard] No taluk data available for processing:', {
+        hasTalukData: !!talukData,
+        hasFeatures: !!talukData?.features,
+        featuresLength: talukData?.features?.length || 0
+      });
+      return [];
+    }
     
-    const processedData = talukData.features.map((feature: any) => {
+    // Check if any features have the required field
+    const sampleFeature = talukData.features[0]?.properties;
+    const talukFieldName = mapDistrictFieldToTalukField(filter.selectedField);
+    console.log('🔎 [Dashboard] Field availability check:', {
+      selectedField: filter.selectedField,
+      mappedField: talukFieldName,
+      hasFieldInSample: sampleFeature ? talukFieldName in sampleFeature : false,
+      sampleFieldValue: sampleFeature?.[talukFieldName],
+      availableFields: sampleFeature ? Object.keys(sampleFeature).slice(0, 10) : []
+    });
+    
+    
+    const processedData = talukData.features.map((feature: any, index: number) => {
       const props = feature.properties;
+      console.log(`🔍 [Dashboard] Processing taluk feature ${index + 1}:`, {
+        talukname: props.talukname,
+        dist_name: props.dist_name,
+        total_students: props.total_students,
+        government_students: props.government_students,
+        private_students: props.private_students,
+        aided_students: props.aided_students,
+        allProperties: Object.keys(props)
+      });
+      
       let value;
       
       if (filter.useWeightedCalculation && filter.selectedField === 'student_school_ratio') {
         value = calculateWeightedField(props, 'total_students', 'unique_schools') || 0;
+        console.log(`📊 [Dashboard] Weighted calculation result: ${value}`);
       } else {
         const talukFieldName = mapDistrictFieldToTalukField(filter.selectedField);
-        value = props[talukFieldName] || 0;
+        value = props[talukFieldName];
+        
+        // Fallback: if mapped field doesn't exist, try original field
+        if (value === undefined || value === null) {
+          value = props[filter.selectedField];
+        }
+        
+        // Final fallback: use total_students if everything else fails
+        if (value === undefined || value === null) {
+          value = props['total_students'] || 0;
+          console.log(`⚠️  [Dashboard] Using fallback total_students: ${value}`);
+        } else {
+          value = value || 0;
+        }
+        
+        console.log(`📊 [Dashboard] Field value extraction:`, {
+          originalField: filter.selectedField,
+          mappedField: talukFieldName,
+          mappedValue: props[talukFieldName],
+          originalValue: props[filter.selectedField],
+          finalValue: value,
+          availableStudentFields: Object.keys(props).filter(key => key.includes('student') || key.includes('school'))
+        });
       }
       
-      return {
+      const result = {
         name: props.talukname || props.taluk_name || props.name || 'Unknown Taluk',
         value: value,
         total_students: props.total_students || 0,
@@ -94,10 +216,18 @@ export default function Dashboard({ isMinimized, onToggleMinimize }: DashboardPr
         male_students: props.male_students || 0,
         female_students: props.female_students || 0
       };
+      
+      console.log(`✅ [Dashboard] Processed taluk result:`, result);
+      return result;
     }).sort((a: any, b: any) => b.value - a.value);
     
+    console.log('✅ [Dashboard] Processed taluk data successfully:', {
+      processedCount: processedData.length,
+      sampleData: processedData.slice(0, 2)
+    });
+    
     return processedData;
-  }, [talukData, filter.selectedField, filter.useWeightedCalculation]);
+  }, [talukData, filter.selectedField, filter.useWeightedCalculation, debugRender, mapDistrictFieldToTalukField]);
 
   // Process village data for Ambattur
   const ambatturVillageData = useMemo(() => {
@@ -308,7 +438,14 @@ export default function Dashboard({ isMinimized, onToggleMinimize }: DashboardPr
         )}
 
         {/* District Level Charts (Taluk View) */}
-        {filter.viewType === 'taluk' && districtTalukData.length > 0 && (
+        {filter.viewType === 'taluk' && (() => {
+          console.log('📈 [Dashboard] Rendering taluk charts:', {
+            viewType: filter.viewType,
+            dataLength: districtTalukData.length,
+            hasData: districtTalukData.length > 0
+          });
+          return districtTalukData.length > 0;
+        })() && (
           <>
             {/* Taluk Comparison Bar Chart */}
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -473,12 +610,34 @@ export default function Dashboard({ isMinimized, onToggleMinimize }: DashboardPr
         )}
 
         {/* No data message */}
-        {((filter.viewType === 'district' && stateData.length === 0) ||
-          (filter.viewType === 'taluk' && districtTalukData.length === 0) ||
-          (filter.viewType === 'village' && ambatturVillageData.length === 0)) && (
+        {(() => {
+          const noData = (
+            (filter.viewType === 'district' && stateData.length === 0) ||
+            (filter.viewType === 'taluk' && districtTalukData.length === 0) ||
+            (filter.viewType === 'village' && ambatturVillageData.length === 0)
+          );
+          
+          if (noData) {
+            console.log('⚠️  [Dashboard] No data message displayed:', {
+              viewType: filter.viewType,
+              stateDataLength: stateData.length,
+              districtTalukDataLength: districtTalukData.length,
+              ambatturVillageDataLength: ambatturVillageData.length,
+              talukDataExists: !!talukData,
+              talukFeaturesCount: talukData?.features?.length || 0
+            });
+          }
+          
+          return noData;
+        })() && (
           <div className="text-center py-8 text-gray-500">
             <p>No data available for current selection</p>
             <p className="text-sm">Try selecting a different area or field</p>
+            <div className="mt-2 text-xs text-gray-400">
+              <p>Debug info:</p>
+              <p>View: {filter.viewType} | Field: {filter.selectedField}</p>
+              <p>Taluk data: {talukData?.features?.length || 0} features</p>
+            </div>
           </div>
         )}
       </div>

@@ -601,7 +601,6 @@ export const StyleFactory = {
         },
 
         districtStyle: (feature: any, classification: any, selectedField: string, useWeightedCalculation: boolean) => {
-            debugger
             const props = feature.getProperties();
             let value: number;
             

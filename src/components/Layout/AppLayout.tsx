@@ -28,7 +28,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3">
+      {/*<header className="bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
@@ -43,6 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         </div>
       </header>
+      */}
 
       {/* Main content area - split layout */}
       <div className="flex-1 flex overflow-hidden">
