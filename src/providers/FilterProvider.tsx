@@ -117,12 +117,31 @@ export function FilterProvider({ children }: FilterProviderProps) {
   }, []);
   
   const navigateToAmbatturVillageView = useCallback(() => {
-    setFilter(prev => ({
-      ...prev,
-      viewType: 'village' as MapViewType,
-      selectedDistrict: 2, // Chennai district
-      selectedTaluk: 'Ambattur',
-    }));
+    setFilter(prev => {
+      // Import AMBATTUR_VILLAGE_FIELDS to check field availability
+      const { AMBATTUR_VILLAGE_FIELDS } = require('@/types/migrationData');
+      
+      // Check if current field is available for Ambattur villages
+      const isCurrentFieldValid = prev.selectedField in AMBATTUR_VILLAGE_FIELDS;
+      
+      // If current field is not valid, switch to 'total_students' as default
+      const selectedField = isCurrentFieldValid ? prev.selectedField : 'total_students';
+      
+      console.log('🏘️ [FilterProvider] Navigating to Ambattur village view:', {
+        previousField: prev.selectedField,
+        isCurrentFieldValid,
+        newField: selectedField,
+        availableFields: Object.keys(AMBATTUR_VILLAGE_FIELDS)
+      });
+      
+      return {
+        ...prev,
+        viewType: 'village' as MapViewType,
+        selectedDistrict: 2, // Chennai district
+        selectedTaluk: 'Ambattur',
+        selectedField: selectedField
+      };
+    });
     setColorClassification(null);
   }, []);
   
