@@ -59,7 +59,10 @@ export default function MapFilterMenu({
           <div className="flex items-center space-x-2">
             <div>
               <div className="text-sm font-medium text-gray-900">
-                {VISUALIZABLE_FIELDS[filter.selectedField]}
+                {filter.viewType === 'village' && filter.selectedTaluk === 'Ambattur' 
+                  ? (AMBATTUR_VILLAGE_FIELDS[filter.selectedField as keyof typeof AMBATTUR_VILLAGE_FIELDS] || VISUALIZABLE_FIELDS[filter.selectedField])
+                  : VISUALIZABLE_FIELDS[filter.selectedField]
+                }
               </div>
               <div className="text-xs text-gray-500">
                 {getCurrentViewTitle()}
